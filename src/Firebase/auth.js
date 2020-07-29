@@ -1,6 +1,35 @@
 import firebase from "./firebase"
+import { db } from './firestore';
+
 export const auth = firebase.auth();
 
+export const SignUpCall = (e, addError) => {
+  e.preventDefault();
+
+  var name = document.getElementById('reg-username').value;
+  var email = document.getElementById("reg-email").value;
+  var pass = document.getElementById("reg-pass").value;
+  if ((name.length && email.length)) {
+    auth.createUserWithEmailAndPassword(email, pass)
+    .then((res) => {
+      auth.currentUser.updateProfile({displayName: name});
+      let uid = res.user.uid;
+
+      db.collection('users').doc(res.user.uid).set({name,email,uid, type: "unassigned"})
+      .then(() => {
+        console.log('User Added')
+        window.location.replace('/dashboard/user');
+      })
+    })
+    .catch((err) => {
+      console.log(err)
+    })
+
+  } 
+  else {
+    console.log('Every Field is Mandatory!')
+  }
+}
 
 // User login 
 export const SignInCall = (e, addError) => {
@@ -11,16 +40,21 @@ export const SignInCall = (e, addError) => {
     auth.signInWithEmailAndPassword(email, pass)
     .then( res => {
       if (res) {
-        window.location.replace("/dashboard");
+        console.log(res.user.uid);
+        db.collection('users').doc(res.user.uid).get()
+        .then(res => {
+          console.log(res.data())
+          if(res.data().type === 'unassigned') window.location.replace("/dashboard/user");
+          else if(res.data().type === 'admin') window.location.replace("/dashboard/admin");
+        })
+
+
         console.log(auth.currentUser);
       }
-    }) .catch((err) => {
+    }) 
+    .catch((err) => {
       let error = {message: err.message}
       error.status = 'danger';
-      addError(error);
-      setTimeout(() => {
-        addError(null);
-      }, 3050);
       console.log('Every Field is Mandatory!')
     });
 
